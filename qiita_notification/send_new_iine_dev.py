@@ -1,10 +1,8 @@
 import json
 import os
-from math import ceil
-from typing import List, Dict, Any, Union, Tuple
-import json
+from typing import List, Dict, Any
 from urllib.request import Request
-from urllib import request, parse, error
+from urllib import request, parse
 from http.client import HTTPResponse
 
 
@@ -70,29 +68,33 @@ def serialize_record(record: Dict[str, Any]) -> Dict[str, Any]:
 
     new = record.get('dynamodb', {}).get('NewImage')
     title = new.get('title', {}).get('S', '')
+    new_iine = int(new.get('iine', {}).get('N', 0))
+
     return {
         'ids': ids,
         'title': title,
+        'new_iine': new_iine,
         'past_iine': past_iine
     }
 
 
-def serialize_response_name(response: Response, num: int, title: str) -> Dict[str, Any]:
+def serialize_response_name(response: Response, new_size: int, num: int, title: str) -> Dict[str, Any]:
     """serialize iine data of Qiita API v2
     :param response:
     :return:
     """
-    size = len(response.body) - num
+    size = new_size - num
     if size <= 0:
         users: List[str] = []
-
-    new_iine = response.body[:size]
-    users = [
-        resp.get('user', {}).get('id') for resp in new_iine
-    ]
+    else:
+        new_iine = response.body[:size]
+        users = [
+            resp.get('user', {}).get('id') for resp in new_iine
+        ]
     return {
         'title': title,
-        'users': users
+        'users': users,
+        'size': size
     }
 
 
@@ -104,11 +106,13 @@ def get_new_iine(item: Dict[str, Any], token: str) -> Dict[str, Any]:
     headers = {'Authorization': 'Bearer {}'.format(token)}
     ids = item.get('ids', '')
     past_iine = item.get('past_iine', 0)
+    new_iine = item.get('new_iine', 0)
     url = f'https://qiita.com/api/v2/items/{ids}/likes'
 
     response = req_get(url, headers=headers)
     title: str = item.get('title', '')
-    resp = serialize_response_name(response, past_iine, title)
+
+    resp = serialize_response_name(response, new_iine, past_iine, title)
     return resp
 
 
@@ -120,7 +124,8 @@ def deserialize_response_name(response: Dict[str, Any], max_length=20) -> str:
     names = ", ".join(response.get('users', []))
     title = response.get('title', '')
     title = f"{title}" if len(title) <= max_length else f"{title[:max_length]}..."
-    return f"\n{names}が「{title}」にいいねしました。"
+    size = response.get('size', 0)
+    return f"\nいいねが{size}回押されました。\n{names}が「{title}」にいいねしました。"
 
 
 def send_notification(message: str, token: str):
