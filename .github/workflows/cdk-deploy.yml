@@ -1,0 +1,26 @@
+name: cdk-diff
+
+on:
+  push:
+    branches:
+      master
+jobs:
+  aws_cdk_deploy:
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Compose run
+        working-directory: ./cdk
+        shell: bash
+        run: |
+          docker-compose run --rm qiita-notification cdk deploy
+        env:
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          QIITA_TOKEN: ${{ secrets.QIITA_TOKEN }}
+          QIITA_URL: ${{ secrets.QIITA_URL }}
+          PER_PAGE: ${{ secrets.PER_PAGE }}
+          LINE_TOKEN: ${{ secrets.LINE_TOKEN }}
