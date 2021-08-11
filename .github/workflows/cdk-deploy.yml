@@ -1,4 +1,4 @@
-name: cdk-diff
+name: cdk-deploy
 
 on:
   push:
