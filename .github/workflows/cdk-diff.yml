@@ -5,7 +5,7 @@ on:
     branches:
       master
 jobs:
-  aws_cdk:
+  aws_cdk_diff:
     runs-on: ubuntu-18.04
     steps:
       - name: Checkout
