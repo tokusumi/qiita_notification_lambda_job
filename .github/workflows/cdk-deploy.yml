@@ -15,7 +15,7 @@ jobs:
         working-directory: ./cdk
         shell: bash
         run: |
-          docker-compose run --rm qiita-notification cdk deploy
+          docker-compose run --rm qiita-notification cdk deploy --require-approval never
         env:
           AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
