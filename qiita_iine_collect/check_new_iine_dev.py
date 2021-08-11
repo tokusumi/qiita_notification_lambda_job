@@ -8,8 +8,10 @@ from http.client import HTTPResponse
 import boto3
 from botocore.exceptions import ClientError
 
+TABLE_NAME = os.getenv("TABLE_NAME")
 
-class Response():
+
+class Response:
     """Http Response Object"""
 
     def __init__(self, res: HTTPResponse):
@@ -32,9 +34,9 @@ def req_get(url, headers=None, params=None) -> Response:
     :return: Response object
     """
     if params:
-        url = '{}?{}'.format(url, parse.urlencode(params))
+        url = "{}?{}".format(url, parse.urlencode(params))
 
-    req = Request(url, headers=headers, method='GET')
+    req = Request(url, headers=headers, method="GET")
 
     with request.urlopen(req) as res:
         response = Response(res)
@@ -46,10 +48,8 @@ def serialize_response(response: Response) -> List[Dict[str, Any]]:
     :param response:
     :return:
     """
-    keys = ['id', 'title', 'likes_count']
-    return [
-        {f: resp.get(f) for f in keys} for resp in response.body
-    ]
+    keys = ["id", "title", "likes_count"]
+    return [{f: resp.get(f) for f in keys} for resp in response.body]
 
 
 def get_item(url: str, headers: Dict[str, str], **param) -> List[Dict[str, Any]]:
@@ -58,15 +58,19 @@ def get_item(url: str, headers: Dict[str, str], **param) -> List[Dict[str, Any]]
     return serialize_response(response)
 
 
-def get_items(token: str, per_page=1, url='https://qiita.com/api/v2/authenticated_user/items') -> List[Dict[str, Any]]:
+def get_items(
+    token: str, per_page=1, url="https://qiita.com/api/v2/authenticated_user/items"
+) -> List[Dict[str, Any]]:
     """ページネーションして認証ユーザの全ての記事を取得する
     :return: 記事のリスト
     """
-    headers = {'Authorization': 'Bearer {}'.format(token)}
+    headers = {"Authorization": "Bearer {}".format(token)}
 
-    response: Response = req_get(url, headers=headers, params={'page': 1, 'per_page': per_page})
+    response: Response = req_get(
+        url, headers=headers, params={"page": 1, "per_page": per_page}
+    )
     items = serialize_response(response)
-    tot_count = int(response.headers['Total-Count'])
+    tot_count = int(response.headers["Total-Count"])
     tot_pages = ceil(tot_count / per_page)
     if tot_pages <= 1:
         return items
@@ -80,42 +84,35 @@ def update_logs(items: List[Dict[str, Any]]):
     """Update the number of iine in Dynamo DB
     If item ID do not exist in Dynamo DB, insert them in it
     """
-    dynamodb = boto3.resource('dynamodb')
+    dynamodb = boto3.resource("dynamodb")
 
-    table = dynamodb.Table('iine_qiita_logs')
+    table = dynamodb.Table(TABLE_NAME)
 
     for item in items:
-        ids = item.get('id')
-        title = item.get('title')
-        iine = item.get('likes_count')
+        ids = item.get("id")
+        title = item.get("title")
+        iine = item.get("likes_count")
 
         try:
             response = table.update_item(
-                Key={
-                    'ids': ids
-                },
+                Key={"ids": ids},
                 UpdateExpression="set iine = :newiine, title = :title",
                 ConditionExpression="attribute_not_exists(ids) or iine <> :newiine",
-                ExpressionAttributeValues={
-                    ":newiine": iine,
-                    ":title": title
-                },
+                ExpressionAttributeValues={":newiine": iine, ":title": title},
             )
         except ClientError as e:
-            if e.response['Error']['Code'] == "ConditionalCheckFailedException":
-                print(e.response['Error']['Message'])
+            if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
+                print(e.response["Error"]["Message"])
             else:
                 raise
 
 
 def main(client, content):
     """this is handler function for Lambda"""
-    qiita_token: str = os.environ['QIITA_TOKEN']
-    url: str = os.environ['QIITA_URL']
-    per_page = int(os.environ['PER_PAGE'])
+    qiita_token: str = os.environ["QIITA_TOKEN"]
+    url: str = os.environ["QIITA_URL"]
+    per_page = int(os.environ["PER_PAGE"])
 
     items: List[Dict[str, Any]] = get_items(qiita_token, per_page=per_page, url=url)
     update_logs(items)
-    return {
-        'statusCode': 200
-    }
+    return {"statusCode": 200}

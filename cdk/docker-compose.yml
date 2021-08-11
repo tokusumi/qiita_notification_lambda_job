@@ -1,0 +1,22 @@
+version: "3"
+services:
+    qiita-notification:
+        command: /bin/bash
+        working_dir: /root/cdk
+        build:
+            context: .
+            dockerfile: ./Dockerfile
+        volumes:
+            - ./app:/root/cdk
+            - ../qiita_iine_collect:/root/lambda/qiita_iine_collect
+            - ../qiita_notification:/root/lambda/qiita_notification
+        environment: 
+            - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+            - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+            - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+
+            - QIITA_TOKEN=${QIITA_TOKEN}
+            - QIITA_URL=${QIITA_URL}
+            - PER_PAGE=${PER_PAGE}
+            - LINE_TOKEN=${LINE_TOKEN}
+        tty: true
