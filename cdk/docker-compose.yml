@@ -6,8 +6,6 @@ services:
         build:
             context: .
             dockerfile: ./Dockerfile
-            args:
-                - CDK_VERSION=1.100
         volumes:
             - ./app:/root/cdk
             - ../qiita_iine_collect:/root/lambda/qiita_iine_collect
