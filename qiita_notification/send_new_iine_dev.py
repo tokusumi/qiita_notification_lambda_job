@@ -6,7 +6,7 @@ from urllib import request, parse
 from http.client import HTTPResponse
 
 
-class Response():
+class Response:
     """Http Response Object"""
 
     def __init__(self, res: HTTPResponse):
@@ -29,9 +29,9 @@ def req_get(url: str, headers=None, params=None) -> Response:
     :return: Response object
     """
     if params:
-        url = '{}?{}'.format(url, parse.urlencode(params))
+        url = "{}?{}".format(url, parse.urlencode(params))
 
-    req = Request(url, headers=headers, method='GET')
+    req = Request(url, headers=headers, method="GET")
 
     with request.urlopen(req) as res:
         response = Response(res)
@@ -42,13 +42,13 @@ def req_post(url: str, data: Dict[str, Any], headers=None, params=None) -> Respo
     """post request. simplified request function of Requests
     :return: Response object
     """
-    if headers.get('Content-Type') == 'application/x-www-form-urlencoded':
+    if headers.get("Content-Type") == "application/x-www-form-urlencoded":
         encoded_data = parse.urlencode(data).encode()
 
     else:
         encoded_data = json.dumps(data).encode()
 
-    req = Request(url, data=encoded_data, headers=headers, method='POST')
+    req = Request(url, data=encoded_data, headers=headers, method="POST")
 
     with request.urlopen(req) as res:
         response = Response(res)
@@ -59,26 +59,23 @@ def serialize_record(record: Dict[str, Any]) -> Dict[str, Any]:
     """serialize data of Dynamo DB Stream
     :return:
     """
-    if record.get('eventName') != 'MODIFY':
+    if record.get("eventName") != "MODIFY":
         return {}
 
-    past = record.get('dynamodb', {}).get('OldImage')
-    past_iine = int(past.get('iine', {}).get('N', 0))
-    ids = past.get('ids', {}).get('S', '')
+    past = record.get("dynamodb", {}).get("OldImage")
+    past_iine = int(past.get("iine", {}).get("N", 0))
+    ids = past.get("ids", {}).get("S", "")
 
-    new = record.get('dynamodb', {}).get('NewImage')
-    title = new.get('title', {}).get('S', '')
-    new_iine = int(new.get('iine', {}).get('N', 0))
+    new = record.get("dynamodb", {}).get("NewImage")
+    title = new.get("title", {}).get("S", "")
+    new_iine = int(new.get("iine", {}).get("N", 0))
 
-    return {
-        'ids': ids,
-        'title': title,
-        'new_iine': new_iine,
-        'past_iine': past_iine
-    }
+    return {"ids": ids, "title": title, "new_iine": new_iine, "past_iine": past_iine}
 
 
-def serialize_response_name(response: Response, new_size: int, num: int, title: str) -> Dict[str, Any]:
+def serialize_response_name(
+    response: Response, new_size: int, num: int, title: str
+) -> Dict[str, Any]:
     """serialize iine data of Qiita API v2
     :param response:
     :return:
@@ -88,29 +85,23 @@ def serialize_response_name(response: Response, new_size: int, num: int, title: 
         users: List[str] = []
     else:
         new_iine = response.body[:size]
-        users = [
-            resp.get('user', {}).get('id') for resp in new_iine
-        ]
-    return {
-        'title': title,
-        'users': users,
-        'size': size
-    }
+        users = [resp.get("user", {}).get("id") for resp in new_iine]
+    return {"title": title, "users": users, "size": size}
 
 
 def get_new_iine(item: Dict[str, Any], token: str) -> Dict[str, Any]:
     """HTTP request to Qiita API v2
     :params:
-    :return: 
+    :return:
     """
-    headers = {'Authorization': 'Bearer {}'.format(token)}
-    ids = item.get('ids', '')
-    past_iine = item.get('past_iine', 0)
-    new_iine = item.get('new_iine', 0)
-    url = f'https://qiita.com/api/v2/items/{ids}/likes'
+    headers = {"Authorization": "Bearer {}".format(token)}
+    ids = item.get("ids", "")
+    past_iine = item.get("past_iine", 0)
+    new_iine = item.get("new_iine", 0)
+    url = f"https://qiita.com/api/v2/items/{ids}/likes"
 
     response = req_get(url, headers=headers)
-    title: str = item.get('title', '')
+    title: str = item.get("title", "")
 
     resp = serialize_response_name(response, new_iine, past_iine, title)
     return resp
@@ -121,24 +112,22 @@ def deserialize_response_name(response: Dict[str, Any], max_length=20) -> str:
     :param max_length: max sentence length
     :return:
     """
-    names = ", ".join(response.get('users', []))
-    title = response.get('title', '')
+    names = ", ".join(response.get("users", []))
+    title = response.get("title", "")
     title = f"{title}" if len(title) <= max_length else f"{title[:max_length]}..."
-    size = response.get('size', 0)
+    size = response.get("size", 0)
     return f"\nいいねが{size}回押されました。\n{names}が「{title}」にいいねしました。"
 
 
 def send_notification(message: str, token: str):
     """send notification by LINE notify"""
-    url = 'https://notify-api.line.me/api/notify'
+    url = "https://notify-api.line.me/api/notify"
 
     headers = {
-        'Authorization': 'Bearer {}'.format(token),
-        'Content-Type': 'application/x-www-form-urlencoded'
+        "Authorization": "Bearer {}".format(token),
+        "Content-Type": "application/x-www-form-urlencoded",
     }
-    msg = {
-        'message': message
-    }
+    msg = {"message": message}
     response = req_post(url, data=msg, headers=headers)
     return response.body
 
@@ -148,16 +137,16 @@ def lambda_handler(event, context):
     qiita_token = os.environ["QIITA_TOKEN"]
     line_token = os.environ["LINE_TOKEN"]
 
-    records = event.get('Records', [])
+    records = event.get("Records", [])
     for record in records:
         serialized_data = serialize_record(record)
         if not serialized_data:
             continue
         new_iines = get_new_iine(serialized_data, qiita_token)
-        if len(new_iines.get('users')) == 0:
+        if len(new_iines.get("users")) == 0:
             continue
         send_notification(deserialize_response_name(new_iines), line_token)
 
     return {
-        'statusCode': 200,
+        "statusCode": 200,
     }

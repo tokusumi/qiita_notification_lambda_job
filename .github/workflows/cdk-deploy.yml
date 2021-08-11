@@ -1,11 +1,11 @@
-name: cdk-diff
+name: cdk-deploy
 
 on:
-  pull_request:
+  push:
     branches:
       master
 jobs:
-  aws_cdk_diff:
+  aws_cdk_deploy:
     runs-on: ubuntu-18.04
     steps:
       - name: Checkout
@@ -15,7 +15,7 @@ jobs:
         working-directory: ./cdk
         shell: bash
         run: |
-          docker-compose run --rm qiita-notification cdk diff
+          docker-compose run --rm qiita-notification cdk deploy
         env:
           AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
