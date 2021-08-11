@@ -2,6 +2,7 @@ version: "3"
 services:
     qiita-notification:
         command: /bin/bash
+        working_dir: /root/cdk
         build:
             context: .
             dockerfile: ./Dockerfile
